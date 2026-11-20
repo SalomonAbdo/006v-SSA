@@ -10,9 +10,9 @@ verificación institucional respaldado por la OMIL de la comuna del profesional.
 Proyecto desarrollado para la asignatura **Capstone (PTY4614)**, Escuela de
 Informática y Telecomunicaciones, Duoc UC, sede Plaza Norte (sección 006V).
 
-> **Estado del proyecto (actualizado al 09-11-2026):** Sprint 7 de 9 en curso
-> (02-11 al 13-11). Cierre y entrega final: 11-12-2026. Ver
-> [Estado y planificación](#estado-y-planificación).
+> **Estado del proyecto (actualizado al 30-11-2026):** proyecto cerrado. Se
+> completaron los 9 sprints (10-08 al 30-11-2026) y se entregó el producto
+> final. Ver [Estado y planificación](#estado-y-planificación).
 
 ---
 
@@ -29,10 +29,11 @@ Informática y Telecomunicaciones, Duoc UC, sede Plaza Norte (sección 006V).
 - [Cómo ejecutar el proyecto localmente](#cómo-ejecutar-el-proyecto-localmente)
 - [Variables de entorno](#variables-de-entorno)
 - [Pruebas](#pruebas)
-- [Despliegue con Docker](#despliegue-con-docker)
+- [Docker](#docker)
 - [Integrantes del equipo](#integrantes-del-equipo)
 - [Metodología de trabajo](#metodología-de-trabajo)
 - [Seguridad](#seguridad)
+- [Estructura del repositorio](#estructura-del-repositorio)
 - [Documentación adicional](#documentación-adicional)
 
 ---
@@ -85,8 +86,10 @@ Funcionalidades principales:
 
 ## Estado y planificación
 
-Scrum con 9 sprints de dos semanas (10-08-2026 al 11-12-2026). Fecha de
-actualización de este documento: **09-11-2026**.
+Scrum con 9 sprints (10-08-2026 al 30-11-2026): los Sprints 1 a 7 de dos
+semanas y los Sprints 8 y 9 ajustados para cerrar el proyecto el 30-11-2026.
+**Los 9 sprints están cerrados.** Fecha de actualización de este documento:
+**30-11-2026**.
 
 | Sprint | Fechas (2026) | Estado | Scrum Master | Product Owner | Developer |
 |---|---|---|---|---|---|
@@ -96,13 +99,20 @@ actualización de este documento: **09-11-2026**.
 | 4 | 21-09 al 02-10 | Cerrado | Sebastián Núñez | Maximiliano Navarrete | Salomón Abdo |
 | 5 | 05-10 al 16-10 | Cerrado | Salomón Abdo | Sebastián Núñez | Maximiliano Navarrete |
 | 6 | 19-10 al 30-10 | Cerrado | Maximiliano Navarrete | Salomón Abdo | Sebastián Núñez |
-| **7** | **02-11 al 13-11** | **En curso** | Sebastián Núñez | Maximiliano Navarrete | Salomón Abdo |
-| 8 | 16-11 al 27-11 | Planificado | Salomón Abdo | Sebastián Núñez | Maximiliano Navarrete |
-| 9 | 30-11 al 11-12 | Planificado | Maximiliano Navarrete | Salomón Abdo | Sebastián Núñez |
+| 7 | 02-11 al 13-11 | Cerrado | Sebastián Núñez | Maximiliano Navarrete | Salomón Abdo |
+| 8 | 16-11 al 20-11 | Cerrado | Salomón Abdo | Sebastián Núñez | Maximiliano Navarrete |
+| 9 | 23-11 al 30-11 | Cerrado | Maximiliano Navarrete | Salomón Abdo | Sebastián Núñez |
 
-Los roles fueron fijos en los Sprints 1 a 4 y rotan desde el Sprint 5.
+Los roles fueron fijos en los Sprints 1 a 4 y rotaron desde el Sprint 5, de
+modo que cada integrante ejerció los tres roles de Scrum.
 
-**Pendiente / hoja de ruta** (ver `docs/ARCHITECTURE.md`):
+**Resultado al cierre (30-11-2026):** se completaron los nueve sprints y las
+funcionalidades de las cuatro capas de confianza (identidad, PIN, reputación y
+verificación municipal con alcance acotado al modelo de datos, la experiencia
+de usuario y el panel de administración).
+
+**Limitaciones conocidas y hoja de ruta posterior al cierre** (ver
+`docs/ARCHITECTURE.md`):
 
 - Endurecimiento de reglas de Firestore para campos de confianza (rol, créditos, verificación, strikes).
 - Validación del PIN en el servidor (hoy se valida en el cliente).
@@ -223,8 +233,28 @@ Ver `docs/ARCHITECTURE.md` para el detalle y las decisiones de diseño.
 
 ## Modelo de datos
 
-Base de datos Cloud Firestore (NoSQL). Las relaciones se resuelven por
+El **modelo de datos** de ServiciosYa está construido sobre Cloud Firestore
+(base de datos NoSQL) y se verificó contra el código real. Se compone de
+**9 colecciones**, dos de ellas con subcolecciones (`messages` y `typing`
+dentro de `chats`). Las relaciones del modelo de datos se resuelven por
 referencia de identificador (`uid` o `requestId`) con consultas `where(...)`.
+El detalle completo está en [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md).
+
+### Colecciones del modelo de datos
+
+| Colección | Propósito y campos principales |
+|---|---|
+| `users/{uid}` | Un documento por usuario: `role` (cliente, profesional, admin), `profile` (nombre, RUT, teléfono, región, comuna, rubro), `isIdentityVerified`, `municipalVerification`, `reputationPoints`, `isBlocked`, `ratingStats` y `credits` (balance, totalSpent, totalEarned) |
+| `requests/{id}` | Solicitud de servicio: `clientId`, `problemType`, descripción, ubicación, fotos, urgencia, estado, propuesta económica (`laborCost`, `materialsCost`, `proposedPrice`), `securityPin` y `pinAttempts` |
+| `chats/{requestId}` | Conversación 1:1 con la solicitud; subcolecciones `messages` (texto, imagen, propuesta, mensajes de sistema) y `typing` |
+| `transactions` | Historial de movimientos de créditos (`use`, `purchase`, `bonus`) por usuario |
+| `notifications` | Avisos al usuario (nueva propuesta, propuesta aceptada, strike, etc.) con estado de lectura |
+| `reports` | Reportes de conducta con peso (`weight`) y marca de reincidencia; base del sistema de strikes |
+| `tickets` | Consultas del Centro de Ayuda y del formulario de Contacto |
+| `metas` | Meta de ingresos por profesional y año (id compuesto `uid_año`) |
+| `bannedRuts` | Lista de RUT baneados de forma definitiva por administración |
+
+### Diagrama entidad-relación del modelo de datos
 
 ```mermaid
 erDiagram
@@ -307,10 +337,12 @@ erDiagram
 `esperando_confirmacion`, `completado`, `cancelado_cliente`,
 `cancelado_profesional`.
 
-**Índices compuestos** (`firestore.indexes.json`), por ejemplo
-`status + problemType + createdAt` (trabajos disponibles por rubro) y
-`acceptedById + status + createdAt` (Mis Trabajos). Detalle en
-[`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md).
+**Índices compuestos** (`firestore.indexes.json`): para las consultas con
+combinación de filtros del modelo de datos se definió un índice por cada
+combinación realmente usada, por ejemplo `status + problemType + createdAt`
+(trabajos disponibles por rubro) y `acceptedById + status + createdAt` (Mis
+Trabajos). Sin ellos Firestore rechaza la consulta. Detalle del modelo de
+datos en [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md).
 
 ## Diagramas UML
 
@@ -538,36 +570,53 @@ específicamente para poder probarla sin depender de React ni de Firebase.
 
 **Plan de pruebas (09-10-2026):** 26 casos, 24 aprobados, 1 fallido
 (CP-08, análisis estático con ESLint: 86 observaciones) y 1 pendiente
-(CP-26, pruebas de reglas de Firestore con emuladores).
+(CP-26, pruebas de reglas de Firestore con emuladores). El caso CP-25
+(ejecución con Docker y emuladores) fue aprobado.
 
-## Despliegue con Docker
+## Docker
 
-El frontend se construye y sirve en un contenedor Nginx (Dockerfile
-multietapa: build con Node 20 y servicio estático con Nginx), y el backend se
-levanta localmente con los emuladores de Firebase. Ambos se orquestan con
+El proyecto incluye **Docker** para reproducir el entorno completo sin
+configuración manual. La configuración de contenedores Docker está formada por
+tres piezas, todas en la raíz del repositorio o en `docs/`:
+
+| Archivo | Función en Docker |
+|---|---|
+| `Dockerfile` | Imagen Docker multietapa: primera etapa de build con Node 20 y segunda etapa de servicio estático con Nginx |
+| `docker-compose.yml` | Orquestación con Docker Compose: levanta el contenedor del frontend y el contenedor de los emuladores de Firebase |
+| [`docs/DOCKER.md`](docs/DOCKER.md) | Manual de Docker con el detalle de cada imagen y de cada contenedor |
+
+El frontend se construye y se sirve en un contenedor Docker con Nginx, y el
+backend se levanta localmente en otro contenedor Docker con los emuladores de
+Firebase (Auth, Firestore y Functions). Ambos contenedores se orquestan con
 Docker Compose.
+
+### Ejecutar el proyecto con Docker
 
 ```bash
 docker compose up --build
 ```
 
-| Servicio | Contenido | URL |
+| Servicio Docker | Contenido | URL |
 |---|---|---|
-| `frontend` | SPA compilada servida por Nginx | http://localhost:8080 |
+| `frontend` | SPA compilada, servida por Nginx dentro del contenedor | http://localhost:8080 |
 | `emuladores` | Emuladores de Firebase (Auth, Firestore, Functions) y su UI | http://localhost:4000 |
 
-Comandos útiles:
+Comandos útiles de Docker Compose:
 
 ```bash
-docker compose up --build -d   # levantar en segundo plano
-docker compose logs -f         # ver logs
+docker compose up --build -d   # levantar los contenedores en segundo plano
+docker compose logs -f         # ver los logs de los contenedores
+docker compose ps              # listar los contenedores en ejecución
 docker compose down            # detener y eliminar los contenedores
 ```
 
 Requisitos: Docker Desktop (o Docker Engine con el plugin Compose). No hace
-falta configurar credenciales de Mercado Pago ni de Vision: la app corre en
-modo `mock` por defecto. El detalle de cada imagen está en
-[`docs/DOCKER.md`](docs/DOCKER.md).
+falta configurar credenciales de Mercado Pago ni de Vision: la aplicación
+corre en modo `mock` por defecto dentro de Docker.
+
+**Verificación:** la ejecución con Docker y los emuladores corresponde al caso
+de prueba **CP-25** (aprobado) del plan de pruebas, con la aplicación
+corriendo en `localhost:8080`.
 
 ## Integrantes del equipo
 
@@ -582,12 +631,16 @@ Los roles Scrum rotan por sprint desde el Sprint 5 (ver
 
 ## Metodología de trabajo
 
-Scrum, con 9 sprints de dos semanas (10-08-2026 al 11-12-2026) alineados a las
-fases de la asignatura Capstone. Cada sprint incluye planificación, desarrollo,
+Scrum, con 9 sprints (10-08-2026 al 30-11-2026; los Sprints 1 a 7 de dos
+semanas y los Sprints 8 y 9 ajustados para cerrar el proyecto) alineados a
+las fases de la asignatura Capstone. Cada sprint incluye planificación, desarrollo,
 revisión y retrospectiva, con un Product Backlog priorizado en historias de
 usuario. El equipo mantiene tres registros: roles rotativos, riesgos (17) y
-cambios (17). Detalle completo de objetivos, plan de trabajo y carta Gantt en
-el Informe Final de la Fase 2 (fuera de este repositorio).
+cambios (18). Al cierre del proyecto (30-11-2026) de los 17 riesgos 11 están cerrados, 1
+aceptado, 2 mitigados y 3 activos (endurecimiento de seguridad, pruebas de
+reglas e integración continua, trasladados a la hoja de ruta). Detalle
+completo de objetivos, plan de trabajo y carta Gantt en el Informe Final de
+la Fase 2 (fuera de este repositorio).
 
 ## Seguridad
 
@@ -605,17 +658,32 @@ el Informe Final de la Fase 2 (fuera de este repositorio).
 - El sistema de strikes suspende automáticamente cualquier cuenta al llegar
   a 3 infracciones (`STRIKE_LIMIT` en `src/lib/business.js`).
 
-**Limitaciones conocidas** (en la hoja de ruta, riesgos R-12 y R-13, defecto
-D-03): los campos de confianza (verificación, rol, créditos y strikes) y la
+**Limitaciones conocidas al cierre** (en la hoja de ruta, riesgos R-12 y R-13,
+defecto D-03): los campos de confianza (verificación, rol, créditos y strikes) y la
 lectura de datos aún no están restringidos por las reglas, y el PIN se valida
 en el cliente. Ver `docs/ARCHITECTURE.md`.
+
+## Estructura del repositorio
+
+```
+ServiciosYa/
+├── src/                     # Frontend (React + Vite); src/lib/business.js = lógica de negocio
+├── functions/               # Cloud Functions (backend en Node.js)
+├── docs/                    # Documentación técnica (ver tabla siguiente)
+├── Dockerfile               # Imagen Docker multietapa (Node 20 + Nginx)
+├── docker-compose.yml       # Docker Compose: frontend y emuladores de Firebase
+├── firestore.rules          # Reglas de seguridad de Firestore
+├── firestore.indexes.json   # Índices compuestos del modelo de datos
+├── storage.rules            # Reglas de Storage (definidas por si se habilita)
+└── .env.example             # Plantilla de variables de entorno
+```
 
 ## Documentación adicional
 
 | Documento | Contenido |
 |---|---|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Arquitectura, hallazgos de la auditoría y limitaciones de seguridad |
-| [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md) | Colecciones de Firestore, relaciones e índices |
+| [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md) | Modelo de datos: colecciones de Firestore, relaciones e índices |
 | [`docs/PAGOS_Y_VERIFICACION.md`](docs/PAGOS_Y_VERIFICACION.md) | Pagos y verificación de identidad, modos `mock` y `live` |
 | [`docs/INNOVACION.md`](docs/INNOVACION.md) | Modelo de verificación municipal (Pasaporte de Confianza Vecinal) |
-| [`docs/DOCKER.md`](docs/DOCKER.md) | Imágenes y orquestación con Docker Compose |
+| [`docs/DOCKER.md`](docs/DOCKER.md) | Docker: imágenes, contenedores y orquestación con Docker Compose |
